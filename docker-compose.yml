@@ -1,0 +1,28 @@
+# Цифровой регион — Streamlit UI + парсер API
+#
+#   docker compose up --build
+#
+# UI: http://127.0.0.1:8550
+# Перед загрузкой данных выключите VPN (Amnezia и т.п.) и системный прокси.
+
+services:
+  digital-mosreg:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: digital-mosreg:local
+    container_name: digital-mosreg
+    ports:
+      - "8550:8550"
+    environment:
+      DIGITAL_MOSREG_STREAMLIT_PORT: "8550"
+      DIGITAL_MOSREG_DELAY_MIN_SEC: "1.5"
+      DIGITAL_MOSREG_DELAY_MAX_SEC: "3.0"
+      # 1 = тест одной карточки; 0 = весь каталог
+      DIGITAL_MOSREG_MAX_ITEMS: "1"
+      DIGITAL_MOSREG_TIMEOUT_SEC: "60"
+      DIGITAL_MOSREG_TIMEOUT_FALLBACK_SEC: "120"
+      DIGITAL_MOSREG_TRUST_ENV_PROXY: "false"
+    volumes:
+      - ./data/digital_mosreg_config.json:/app/data/digital_mosreg_config.json:ro
+    restart: unless-stopped

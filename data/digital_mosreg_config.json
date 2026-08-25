@@ -1,0 +1,28 @@
+{
+  "api": {
+    "base_url": "https://digital.mosreg.ru",
+    "cases_path": "/api/cases",
+    "page_limit": 9,
+    "max_pages": 0,
+    "max_items": 1,
+    "fetch_detail": true,
+    "filter_ai": true,
+    "filter_all_status": 1
+  },
+  "request": {
+    "delay_min_sec": 1.5,
+    "delay_max_sec": 3.0,
+    "timeout_sec": 60,
+    "timeout_fallback_sec": 120,
+    "connect_timeout_sec": 20,
+    "stop_on_429": true,
+    "trust_env_proxy": false,
+    "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  },
+  "ui": {
+    "streamlit_port": 8550
+  },
+  "output": {
+    "xlsx_path": "data/digital_mosreg_cases.xlsx"
+  }
+}
