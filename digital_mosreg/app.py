@@ -126,7 +126,7 @@ def render_app(*, config_path: Path | None = None) -> None:
     frame = pd.DataFrame(rows, columns=list(COLUMN_ORDER))
     st.dataframe(
         frame,
-        use_container_width=True,
+        width="stretch",
         height=560,
         hide_index=True,
         column_config=_column_config(),
