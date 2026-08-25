@@ -1,15 +1,15 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-import pandas as pd
 import streamlit as st
 
 from digital_mosreg.api_client import DigitalMosregApiError, collect_cases
 from digital_mosreg.config import DEFAULT_CONFIG_PATH, load_digital_mosreg_config
 from digital_mosreg.excel_export import rows_to_xlsx_bytes
-from digital_mosreg.flatten import COLUMN_ORDER
+from digital_mosreg.table_view import rows_to_arrow_safe_dataframe
 
 VPN_WARNING = (
     "Перед запуском загрузки отключитесь от любых прокси и выключите VPN. "
@@ -17,6 +17,7 @@ VPN_WARNING = (
 )
 
 LINK_COLUMNS = ("URL", "Ссылка на проект")
+DEFAULT_UI_MAX_ITEMS = 1
 
 
 def _progress_fraction(event: dict[str, Any]) -> float:
@@ -46,6 +47,8 @@ def _init_session_state() -> None:
         st.session_state.is_loading = False
     if "load_requested" not in st.session_state:
         st.session_state.load_requested = False
+    if "max_items_run" not in st.session_state:
+        st.session_state.max_items_run = DEFAULT_UI_MAX_ITEMS
 
 
 def render_app(*, config_path: Path | None = None) -> None:
@@ -58,15 +61,29 @@ def render_app(*, config_path: Path | None = None) -> None:
     st.warning(VPN_WARNING)
 
     config = load_digital_mosreg_config(config_path or DEFAULT_CONFIG_PATH)
+    _init_session_state()
+
+    max_items = st.number_input(
+        "Количество карточек",
+        min_value=0,
+        max_value=10_000,
+        value=DEFAULT_UI_MAX_ITEMS,
+        step=1,
+        disabled=st.session_state.is_loading,
+        help=(
+            "Сколько карточек загрузить за один запуск. "
+            "По умолчанию 1 (тест). "
+            "0 — весь каталог (долго: сотни запросов с паузами)."
+        ),
+    )
+
     st.caption(
         f"API: `{config.base_url}{config.cases_path}` · "
         f"задержка {config.delay_min_sec}–{config.delay_max_sec} с · "
         f"таймаут {config.timeout_sec}/{config.timeout_fallback_sec} с · "
-        f"max_items={config.max_items or '∞'} · max_pages={config.max_pages or '∞'} · "
+        f"лимит карточек в форме: {max_items or 'все'} · "
         f"порт UI {config.streamlit_port}"
     )
-
-    _init_session_state()
 
     load_clicked = st.button(
         "Загрузить данные",
@@ -75,6 +92,7 @@ def render_app(*, config_path: Path | None = None) -> None:
         help="Кнопка недоступна, пока идёт загрузка",
     )
     if load_clicked and not st.session_state.is_loading:
+        st.session_state.max_items_run = int(max_items)
         st.session_state.load_requested = True
         st.session_state.is_loading = True
         st.rerun()
@@ -82,6 +100,7 @@ def render_app(*, config_path: Path | None = None) -> None:
     if st.session_state.load_requested and st.session_state.is_loading:
         progress_bar = st.progress(0.0, text="Подготовка…")
         status = st.empty()
+        run_config = replace(config, max_items=int(st.session_state.max_items_run))
 
         def on_progress(event: dict[str, Any]) -> None:
             message = str(event.get("message") or "")
@@ -89,11 +108,12 @@ def render_app(*, config_path: Path | None = None) -> None:
             progress_bar.progress(_progress_fraction(event), text=message)
 
         try:
-            result = collect_cases(config, progress=on_progress)
+            result = collect_cases(run_config, progress=on_progress)
             st.session_state.rows = result.rows
             parts = [
                 f"Загружено строк: {result.items_fetched}",
                 f"страниц списка: {result.pages_fetched}",
+                f"лимит: {run_config.max_items or 'все'}",
             ]
             if result.total_reported is not None:
                 parts.append(f"всего по API: {result.total_reported}")
@@ -123,7 +143,7 @@ def render_app(*, config_path: Path | None = None) -> None:
         st.write("Нажмите «Загрузить данные», чтобы получить каталог.")
         return
 
-    frame = pd.DataFrame(rows, columns=list(COLUMN_ORDER))
+    frame = rows_to_arrow_safe_dataframe(rows)
     st.dataframe(
         frame,
         width="stretch",

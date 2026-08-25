@@ -237,3 +237,23 @@ def test_rows_to_xlsx_bytes_contains_sheet() -> None:
     payload = rows_to_xlsx_bytes(rows)
     assert payload[:2] == b"PK"
     assert len(payload) > 100
+
+
+def test_arrow_safe_dataframe_mixed_int_and_empty() -> None:
+    from digital_mosreg.table_view import cell_to_table_value, rows_to_arrow_safe_dataframe
+
+    assert cell_to_table_value(None) == ""
+    assert cell_to_table_value(True) == "да"
+    assert cell_to_table_value(False) == "нет"
+    assert cell_to_table_value(12) == "12"
+
+    rows = [
+        {"ID": 1, "Число ОМСУ внедрения": 3, "Активно": True},
+        {"ID": 2, "Число ОМСУ внедрения": "", "Активно": False},
+    ]
+    frame = rows_to_arrow_safe_dataframe(rows)
+    assert list(frame.columns) == list(COLUMN_ORDER)
+    assert frame["Число ОМСУ внедрения"].tolist()[0] == "3"
+    assert frame["Число ОМСУ внедрения"].tolist()[1] == ""
+    assert frame["Активно"].tolist() == ["да", "нет"]
+    assert all(frame[col].map(lambda v: isinstance(v, str)).all() for col in frame.columns)
