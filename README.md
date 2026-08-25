@@ -33,6 +33,8 @@ cd digital_mosreg
 docker compose up --build
 ```
 
+После обновления кода из GitHub всегда пересобирайте образ: `docker compose up --build` (не только `up`).
+
 Дождитесь сообщения Streamlit о запуске (порт **8550**).
 
 Остановка: `Ctrl+C`  
